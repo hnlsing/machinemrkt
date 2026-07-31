@@ -1,0 +1,444 @@
+<!DOCTYPE html>
+<html lang="en" id="html-root">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Listing — MachineMrkt</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@500&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  :root{
+    --black:#111111; --near-black:#171717; --white:#FFFFFF;
+    --gray-050:#F7F7F7; --gray-100:#F0F0F0; --gray-300:#D8D8DB;
+    --gray-500:#6E6E73; --gray-700:#3A3A3D;
+    --accent:#FF7A1A; --green:#2F8F5B;
+    --font:'Inter',-apple-system,sans-serif; --mono:'IBM Plex Mono',monospace;
+    --nav-h:68px;
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  body{ font-family:var(--font); background:var(--white); color:var(--black); font-size:18px; line-height:1.6; -webkit-font-smoothing:antialiased; }
+  a{ color:inherit; }
+  button{ font-family:inherit; cursor:pointer; }
+  :focus-visible{ outline:3px solid var(--accent); outline-offset:2px; }
+  .container{ max-width:1200px; margin:0 auto; padding:0 32px; }
+
+  .pill{
+    display:inline-flex; align-items:center; justify-content:center; gap:8px;
+    border-radius:999px; font-weight:600; font-size:16px;
+    padding:14px 30px; min-height:48px; border:1.5px solid transparent;
+    text-decoration:none; white-space:nowrap;
+  }
+  .pill-solid-dark{ background:var(--black); color:var(--white); }
+  .pill-solid-dark:hover{ background:var(--near-black); }
+  .pill-outline-dark{ background:transparent; color:var(--black); border-color:var(--gray-300); }
+  .pill-outline-dark:hover{ border-color:var(--black); }
+
+  header.main{
+    position:sticky; top:0; z-index:50; height:var(--nav-h);
+    background:rgba(255,255,255,0.92); backdrop-filter:blur(10px);
+    border-bottom:1px solid var(--gray-100); display:flex; align-items:center;
+  }
+  header.main .container{ display:flex; align-items:center; justify-content:space-between; gap:24px; }
+  .wordmark{ font-weight:800; font-size:20px; letter-spacing:-0.01em; text-decoration:none; color:var(--black); }
+  .wordmark .mrkt{ color:var(--accent); }
+  nav.primary{ display:flex; gap:34px; }
+  nav.primary a{ text-decoration:none; color:var(--gray-700); font-weight:500; font-size:15px; padding:6px 0; border-bottom:1.5px solid transparent; }
+  nav.primary a:hover{ color:var(--black); border-bottom-color:var(--black); }
+  .nav-right{ display:flex; align-items:center; gap:18px; }
+  .lang-toggle{ display:flex; align-items:center; gap:2px; font-family:var(--mono); font-size:13px; font-weight:500; }
+  .lang-toggle button{ background:none; border:none; color:var(--gray-500); padding:4px 6px; cursor:pointer; }
+  .lang-toggle button.active{ color:var(--black); text-decoration:underline; text-underline-offset:4px; }
+  .lang-toggle .sep{ color:var(--gray-300); }
+
+  .breadcrumb{ padding:22px 0 0; }
+  .breadcrumb a{ color:var(--gray-500); font-size:14.5px; text-decoration:none; }
+  .breadcrumb a:hover{ color:var(--black); }
+
+  .listing-wrap{ padding:24px 0 90px; }
+  .listing-grid{ display:grid; grid-template-columns:1.1fr 1fr; gap:56px; align-items:start; }
+
+  .photo-box{
+    aspect-ratio:4/3; background:var(--gray-050);
+    display:flex; align-items:center; justify-content:center;
+    font-size:96px; position:relative; overflow:hidden;
+  }
+  .photo-box img{ width:100%; height:100%; object-fit:cover; }
+  .gallery-strip{ display:flex; gap:10px; margin-top:12px; flex-wrap:wrap; }
+  .gallery-thumb{
+    width:76px; height:76px; border-radius:6px; overflow:hidden; cursor:pointer;
+    border:2px solid transparent; flex-shrink:0; background:var(--gray-050);
+  }
+  .gallery-thumb img{ width:100%; height:100%; object-fit:cover; display:block; }
+  .gallery-thumb.active{ border-color:var(--black); }
+  .photo-tag{
+    position:absolute; top:16px; left:16px;
+    display:flex; align-items:center; gap:6px;
+    background:var(--white); font-family:var(--mono); font-size:12px; font-weight:500;
+    padding:6px 12px; border-radius:999px; color:var(--green);
+  }
+  .photo-tag::before{ content:""; width:6px; height:6px; border-radius:50%; background:var(--green); }
+  .photo-tag.pending{ color:var(--gray-500); }
+  .photo-tag.pending::before{ background:var(--gray-500); }
+  .photo-tag.deal{ color:var(--accent); left:auto; right:16px; }
+  .photo-tag.deal::before{ background:var(--accent); }
+
+  .detail-cat{ font-family:var(--mono); font-size:13px; color:var(--gray-500); text-transform:uppercase; letter-spacing:0.08em; margin-bottom:10px; }
+  .detail-title{ font-size:clamp(26px,3.4vw,38px); font-weight:800; letter-spacing:-0.015em; margin-bottom:18px; }
+  .detail-meta{ font-family:var(--mono); font-size:15px; color:var(--gray-500); margin-bottom:26px; }
+
+  .price-block{ margin-bottom:30px; padding-bottom:30px; border-bottom:1px solid var(--gray-100); }
+  .price-was{ text-decoration:line-through; color:var(--gray-500); font-size:18px; margin-right:10px; }
+  .price-now{ font-size:34px; font-weight:800; }
+  .price-now.deal{ color:var(--accent); }
+  .save-note{ font-family:var(--mono); font-size:13px; color:var(--accent); margin-top:8px; }
+
+  .cta-row{ display:flex; gap:12px; flex-wrap:wrap; margin-bottom:34px; }
+
+  .info-card{ background:var(--gray-050); padding:22px 24px; margin-bottom:16px; }
+  .info-card h3{ font-size:15px; font-weight:700; margin-bottom:6px; }
+  .info-card p{ color:var(--gray-700); font-size:15.5px; }
+  .info-card a{ color:var(--black); font-weight:600; text-decoration:underline; }
+
+  .spec-sheet{ margin-top:8px; }
+  .spec-block{ margin-bottom:26px; }
+  .spec-block:last-child{ margin-bottom:0; }
+  .spec-section-title{
+    font-family:var(--mono); font-size:13px; font-weight:600; color:var(--accent);
+    letter-spacing:0.08em; text-transform:uppercase;
+    padding-bottom:8px; margin-bottom:10px; border-bottom:1px solid var(--gray-100);
+  }
+  .spec-row{
+    display:flex; justify-content:space-between; gap:16px;
+    padding:8px 0; border-bottom:1px solid var(--gray-100);
+    font-size:15px;
+  }
+  .spec-row:last-child{ border-bottom:none; }
+  .spec-row .spec-label{ color:var(--gray-500); }
+  .spec-row .spec-value{ font-weight:600; text-align:right; }
+  .spec-bullets{ list-style:none; }
+  .spec-bullets li{
+    position:relative; padding:6px 0 6px 20px; font-size:15px; color:var(--ink-soft, var(--gray-700));
+  }
+  .spec-bullets li::before{
+    content:"•"; position:absolute; left:0; color:var(--accent); font-weight:800;
+  }
+  .spec-para{ font-size:15.5px; color:var(--gray-700); margin-bottom:8px; }
+
+  #not-found{ display:none; text-align:center; padding:100px 20px; }
+  #not-found.show{ display:block; }
+  #not-found h2{ font-size:24px; font-weight:800; margin-bottom:12px; }
+  #not-found p{ color:var(--gray-500); margin-bottom:24px; }
+
+  #loading-state{ padding:100px 20px; text-align:center; color:var(--gray-500); }
+
+  footer{
+    background:var(--white); padding:64px 0 28px; border-top:1px solid var(--gray-100); position:relative;
+  }
+  footer::before{
+    content:""; position:absolute; top:-1px; left:0; right:0; height:2px;
+    background:linear-gradient(90deg, transparent 5%, var(--accent) 50%, transparent 95%); opacity:0.5;
+  }
+  .footer-bottom{
+    border-top:1px solid var(--gray-100); padding-top:24px;
+    display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:16px;
+    font-size:13.5px; color:var(--gray-500);
+  }
+
+  @media (max-width:900px){
+    nav.primary{ display:none; }
+    .listing-grid{ grid-template-columns:1fr; gap:32px; }
+  }
+</style>
+</head>
+<body>
+
+<header class="main">
+  <div class="container">
+    <a href="index.html" class="wordmark">Machine<span class="mrkt">Mrkt</span></a>
+    <nav class="primary">
+      <a href="inventory.html" data-en="Inventory" data-es="Inventario">Inventory</a>
+      <a href="consignment.html" data-en="Sell Your Equipment" data-es="Venda su Equipo">Sell Your Equipment</a>
+      <a href="financing.html" data-en="Financing" data-es="Financiamiento">Financing</a>
+      <a href="about.html" data-en="About Us" data-es="Sobre Nosotros">About Us</a>
+      <a href="contact.html" data-en="Contact" data-es="Contacto">Contact</a>
+    </nav>
+    <div class="nav-right">
+      <div class="lang-toggle" role="group" aria-label="Language selector">
+        <button type="button" class="active" data-lang-btn="en">EN</button>
+        <span class="sep">/</span>
+        <button type="button" data-lang-btn="es">ES</button>
+      </div>
+      <a href="tel:9092226224" class="pill pill-solid-dark" data-en="Call Now" data-es="Llame Ahora">Call Now</a>
+    </div>
+  </div>
+</header>
+
+<div class="breadcrumb container">
+  <a href="inventory.html" data-en="← Back to Inventory" data-es="← Volver al Inventario">← Back to Inventory</a>
+</div>
+
+<div id="loading-state" data-en="Loading listing…" data-es="Cargando anuncio…">Loading listing…</div>
+
+<div class="listing-wrap" id="listing-content" style="display:none;">
+  <div class="container">
+    <div class="listing-grid">
+      <div>
+        <div class="photo-box" id="photo-box"></div>
+        <div class="gallery-strip" id="gallery-strip"></div>
+      </div>
+      <div>
+        <div class="detail-cat" id="detail-cat"></div>
+        <h1 class="detail-title" id="detail-title"></h1>
+        <div class="detail-meta" id="detail-meta"></div>
+
+        <div class="price-block" id="price-block"></div>
+
+        <div class="cta-row">
+          <a href="tel:9092226224" class="pill pill-solid-dark" data-en="Call 909-222-6224" data-es="Llame 909-222-6224">Call 909-222-6224</a>
+          <a href="inventory.html" class="pill pill-outline-dark" data-en="See More Inventory" data-es="Ver Más Inventario">See More Inventory</a>
+        </div>
+
+        <div class="info-card">
+          <h3 data-en="Financing Available" data-es="Financiamiento Disponible">Financing Available</h3>
+          <p data-en="Commercial financing options for qualified buyers. Call to talk through terms." data-es="Opciones de financiamiento comercial para compradores calificados. Llame para hablar de los términos.">Commercial financing options for qualified buyers. Call to talk through terms.</p>
+        </div>
+        <div class="info-card">
+          <h3 data-en="Have Something to Sell?" data-es="¿Tiene Algo para Vender?">Have Something to Sell?</h3>
+          <p><span data-en="We also take consignments. " data-es="También aceptamos consignaciones. "></span><a href="consignment.html" data-en="Learn more →" data-es="Más información →">Learn more →</a></p>
+        </div>
+
+        <div class="spec-sheet" id="spec-sheet"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="not-found" class="container">
+  <h2 data-en="We couldn't find that listing" data-es="No pudimos encontrar ese anuncio">We couldn't find that listing</h2>
+  <p data-en="It may have sold or been removed. Check out the rest of our inventory instead." data-es="Puede que se haya vendido o eliminado. Revise el resto de nuestro inventario.">It may have sold or been removed. Check out the rest of our inventory instead.</p>
+  <a href="inventory.html" class="pill pill-solid-dark" data-en="Browse Inventory" data-es="Ver Inventario">Browse Inventory</a>
+</div>
+
+<footer id="contact">
+  <div class="container">
+    <div class="footer-bottom">
+      <span data-en="© 2026 MachineMrkt. All rights reserved." data-es="© 2026 MachineMrkt. Todos los derechos reservados.">© 2026 MachineMrkt. All rights reserved.</span>
+      <div style="display:flex; align-items:center; gap:18px;">
+        <a href="admin.html" style="font-size:13px; color:var(--gray-500); text-decoration:none;" data-en="Owner Login" data-es="Acceso del Propietario">Owner Login</a>
+        <div class="lang-toggle" role="group" aria-label="Language selector">
+          <button type="button" class="active" data-lang-btn="en">EN</button>
+          <span class="sep">/</span>
+          <button type="button" data-lang-btn="es">ES</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</footer>
+
+<script src="supabase-config.js"></script>
+<script>
+  var currentLang = 'en';
+  var currentItem = null;
+
+  var CATEGORY_META = {
+    water:     { en: 'Water Truck',    es: 'Cisterna',      icon: '🚛' },
+    dump:      { en: 'Dump Truck',     es: 'Volteo',        icon: '🚚' },
+    tractor:   { en: 'Tractor Truck',  es: 'Tractor',       icon: '🚛' },
+    flatbed:   { en: 'Flatbed Truck',  es: 'Camión Plano',  icon: '🚛' },
+    equipment: { en: 'Heavy Equipment',es: 'Equipo Pesado', icon: '🏗️' }
+  };
+
+  function setLang(lang){
+    currentLang = lang;
+    document.getElementById('html-root').setAttribute('lang', lang);
+    document.querySelectorAll('[data-en]').forEach(function(el){
+      var text = lang === 'es' ? el.getAttribute('data-es') : el.getAttribute('data-en');
+      if(text !== null) el.textContent = text;
+    });
+    document.querySelectorAll('[data-lang-btn]').forEach(function(btn){
+      btn.classList.toggle('active', btn.getAttribute('data-lang-btn') === lang);
+    });
+    if(currentItem) renderListing(currentItem);
+  }
+  document.querySelectorAll('[data-lang-btn]').forEach(function(btn){
+    btn.addEventListener('click', function(){ setLang(btn.getAttribute('data-lang-btn')); });
+  });
+
+  function renderListing(item){
+    currentItem = item;
+    var catMeta = CATEGORY_META[item.category] || { en: item.category, es: item.category, icon: '🚛' };
+    var catLabel = currentLang === 'es' ? catMeta.es : catMeta.en;
+    var statusLabel = item.status === 'pending'
+      ? (currentLang === 'es' ? 'PENDIENTE' : 'PENDING')
+      : (currentLang === 'es' ? 'DISPONIBLE' : 'AVAILABLE');
+
+    var photos = (item.photos && item.photos.length > 0) ? item.photos : (item.photo_url ? [item.photo_url] : []);
+
+    function showPhoto(index){
+      var photoBox = document.getElementById('photo-box');
+      photoBox.innerHTML =
+        (photos[index] ? '<img src="' + photos[index] + '" alt="">' : catMeta.icon) +
+        '<span class="photo-tag' + (item.status === 'pending' ? ' pending' : '') + '">' + statusLabel + '</span>' +
+        (item.is_deal ? '<span class="photo-tag deal">' + (currentLang === 'es' ? 'OFERTA' : 'DEAL') + '</span>' : '');
+      document.querySelectorAll('.gallery-thumb').forEach(function(t, i){
+        t.classList.toggle('active', i === index);
+      });
+    }
+
+    showPhoto(0);
+
+    var galleryStrip = document.getElementById('gallery-strip');
+    galleryStrip.innerHTML = '';
+    if(photos.length > 1){
+      photos.forEach(function(url, i){
+        var thumb = document.createElement('div');
+        thumb.className = 'gallery-thumb' + (i === 0 ? ' active' : '');
+        thumb.innerHTML = '<img src="' + url + '" alt="">';
+        thumb.addEventListener('click', function(){ showPhoto(i); });
+        galleryStrip.appendChild(thumb);
+      });
+    }
+
+    document.getElementById('detail-cat').textContent = catLabel;
+    document.getElementById('detail-title').textContent = item.title;
+    document.getElementById('detail-meta').textContent = item.meta || '';
+
+    var priceBlock = document.getElementById('price-block');
+    if(item.is_deal && item.deal_price != null && item.deal_price < item.price){
+      var savings = item.price - item.deal_price;
+      priceBlock.innerHTML =
+        '<span class="price-was">$' + Number(item.price).toLocaleString() + '</span>' +
+        '<span class="price-now deal">$' + Number(item.deal_price).toLocaleString() + '</span>' +
+        '<div class="save-note">' + (currentLang === 'es' ? 'AHORRE $' : 'SAVE $') + Math.round(savings).toLocaleString() + '</div>';
+    } else {
+      priceBlock.innerHTML = '<span class="price-now">$' + Number(item.price).toLocaleString() + '</span>';
+    }
+
+    document.title = item.title + ' — MachineMrkt';
+
+    renderSpecSheet(item.details);
+  }
+
+  // Parses pasted spec text into sections, label:value rows, and bullet lists.
+  //   ALL CAPS LINE (no colon)  -> section header
+  //   Label: Value              -> spec row
+  //   • line  or  - line        -> bullet item
+  //   anything else             -> plain paragraph
+  function parseSpecSheet(text){
+    if(!text) return [];
+    const lines = text.split('\n').map(function(l){ return l.trim(); });
+    const blocks = [];
+    let current = null;
+
+    function pushBlock(type){
+      current = { type: type, items: [] };
+      blocks.push(current);
+    }
+
+    lines.forEach(function(line){
+      if(!line) return;
+
+      const isBulletLine = /^[•\-]\s*/.test(line);
+      const isAllCapsHeader = !isBulletLine &&
+        line === line.toUpperCase() && /[A-Z]/.test(line) && !line.includes(':') && line.length < 60;
+
+      if(isAllCapsHeader){
+        pushBlock('section-body');
+        current.title = line;
+        return;
+      }
+
+      if(isBulletLine){
+        if(!current || current.kind !== 'bullets'){
+          pushBlock('bullets'); current.kind = 'bullets';
+        }
+        current.items.push(line.replace(/^[•\-]\s*/, ''));
+        return;
+      }
+
+      const colonIdx = line.indexOf(':');
+      if(colonIdx > 0 && colonIdx < line.length - 1){
+        if(!current || current.kind !== 'rows'){
+          pushBlock('rows'); current.kind = 'rows';
+        }
+        current.items.push({ label: line.slice(0, colonIdx).trim(), value: line.slice(colonIdx + 1).trim() });
+        return;
+      }
+
+      if(!current || current.kind !== 'para'){
+        pushBlock('para'); current.kind = 'para';
+      }
+      current.items.push(line);
+    });
+
+    return blocks;
+  }
+
+  function renderSpecSheet(detailsText){
+    const container = document.getElementById('spec-sheet');
+    const blocks = parseSpecSheet(detailsText);
+    if(blocks.length === 0){ container.innerHTML = ''; return; }
+
+    let html = '';
+    let pendingTitle = null;
+
+    blocks.forEach(function(block){
+      if(block.title){ pendingTitle = block.title; return; }
+
+      html += '<div class="spec-block">';
+      if(pendingTitle){
+        html += '<div class="spec-section-title">' + pendingTitle + '</div>';
+        pendingTitle = null;
+      }
+      if(block.kind === 'rows'){
+        block.items.forEach(function(row){
+          html += '<div class="spec-row"><span class="spec-label">' + row.label + '</span><span class="spec-value">' + row.value + '</span></div>';
+        });
+      } else if(block.kind === 'bullets'){
+        html += '<ul class="spec-bullets">' + block.items.map(function(t){ return '<li>' + t + '</li>'; }).join('') + '</ul>';
+      } else if(block.kind === 'para'){
+        block.items.forEach(function(p){ html += '<p class="spec-para">' + p + '</p>'; });
+      }
+      html += '</div>';
+    });
+
+    container.innerHTML = html;
+  }
+
+  async function loadListing(){
+    const params = new URLSearchParams(window.location.search);
+    const id = params.get('id');
+    const loadingState = document.getElementById('loading-state');
+    const contentEl = document.getElementById('listing-content');
+    const notFoundEl = document.getElementById('not-found');
+
+    if(!id){
+      loadingState.style.display = 'none';
+      notFoundEl.classList.add('show');
+      return;
+    }
+
+    const { data, error } = await supabaseClient
+      .from('listings')
+      .select('*')
+      .eq('id', id)
+      .maybeSingle();
+
+    loadingState.style.display = 'none';
+
+    if(error || !data){
+      notFoundEl.classList.add('show');
+      return;
+    }
+
+    contentEl.style.display = 'block';
+    renderListing(data);
+  }
+
+  loadListing();
+</script>
+
+</body>
+</html>
