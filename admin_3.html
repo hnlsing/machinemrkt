@@ -1,0 +1,1616 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Owner Admin — MachineMrkt</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@500&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  :root{
+    --black:#111111; --white:#FFFFFF;
+    --gray-050:#F7F7F7; --gray-100:#F0F0F0; --gray-300:#D8D8DB;
+    --gray-500:#6E6E73; --gray-700:#3A3A3D;
+    --accent:#FF7A1A; --green:#2F8F5B; --red:#D64545;
+    --font:'Inter',-apple-system,sans-serif;
+    --mono:'IBM Plex Mono',monospace;
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  body{ font-family:var(--font); background:var(--gray-050); color:var(--black); font-size:17px; line-height:1.5; }
+  a{ color:inherit; }
+  button, input, select{ font-family:inherit; }
+  :focus-visible{ outline:3px solid var(--accent); outline-offset:2px; }
+
+  .container{ max-width:960px; margin:0 auto; padding:0 24px; }
+
+  header{
+    background:var(--black); color:#fff;
+    padding:20px 0;
+  }
+  header .container{ display:flex; align-items:center; justify-content:space-between; }
+  .wordmark{ font-weight:800; font-size:19px; text-decoration:none; color:#fff; }
+  .wordmark .mrkt{ color:var(--accent); }
+  header .tag{ font-family:var(--mono); font-size:13px; color:rgba(255,255,255,0.6); }
+
+  .pill{
+    display:inline-flex; align-items:center; justify-content:center; gap:8px;
+    border-radius:999px; font-weight:600; font-size:15px;
+    padding:12px 24px; min-height:44px; border:1.5px solid transparent;
+    cursor:pointer; text-decoration:none;
+  }
+  .pill-dark{ background:var(--black); color:#fff; }
+  .pill-dark:hover{ background:#000; }
+  .pill-outline{ background:transparent; color:var(--black); border-color:var(--gray-300); }
+  .pill-outline:hover{ border-color:var(--black); }
+  .pill-danger{ background:#fff; color:var(--red); border-color:var(--red); }
+  .pill-danger:hover{ background:var(--red); color:#fff; }
+  .pill:disabled{ opacity:0.5; cursor:not-allowed; }
+
+  /* ---- Login screen ---- */
+  #login-screen{
+    max-width:400px; margin:80px auto; padding:0 24px;
+  }
+  .login-card{
+    background:#fff; border:1px solid var(--gray-100);
+    padding:36px 32px;
+  }
+  .login-card h1{ font-size:22px; font-weight:800; margin-bottom:6px; }
+  .login-card p{ color:var(--gray-500); font-size:15px; margin-bottom:24px; }
+  .field{ margin-bottom:16px; }
+  .field label{ display:block; font-size:14px; font-weight:600; margin-bottom:6px; }
+  .field input, .field select, .field textarea{
+    width:100%; border:1.5px solid var(--gray-300); border-radius:8px;
+    padding:11px 14px; font-size:16px; color:var(--black);
+  }
+  .field input:focus, .field select:focus, .field textarea:focus{ outline:none; border-color:var(--black); }
+  #login-error{ color:var(--red); font-size:14px; margin-top:10px; display:none; }
+  #login-error.show{ display:block; }
+
+  /* ---- Dashboard ---- */
+  #dashboard{ display:none; padding:40px 0 90px; }
+  .section-title{ font-size:22px; font-weight:800; margin-bottom:18px; }
+
+  .add-card{
+    background:#fff; border:1px solid var(--gray-100); padding:28px; margin-bottom:44px;
+  }
+  .grid-2{ display:grid; grid-template-columns:1fr 1fr; gap:16px; }
+  .grid-3{ display:grid; grid-template-columns:1fr 1fr 1fr; gap:16px; }
+  #add-status{ font-size:14px; margin-top:12px; display:none; }
+  #add-status.show{ display:block; }
+  #add-status.ok{ color:var(--green); }
+  #add-status.err{ color:var(--red); }
+
+  .add-row{
+    border:1px solid var(--gray-100); padding:20px; margin-bottom:16px; position:relative; background:var(--gray-050);
+  }
+  .add-row .row-number{
+    font-family:var(--mono); font-size:12px; color:var(--gray-500); margin-bottom:14px; font-weight:600;
+  }
+  .add-row .remove-row-btn{
+    position:absolute; top:16px; right:16px;
+    background:none; border:none; color:var(--gray-500); font-size:13px; font-weight:600; cursor:pointer;
+  }
+  .add-row .remove-row-btn:hover{ color:var(--red); }
+  .add-row .row-status{ font-size:13px; margin-top:8px; }
+  .add-row .row-status.ok{ color:var(--green); }
+  .add-row .row-status.err{ color:var(--red); }
+
+  .photo-picker-strip{ display:flex; flex-wrap:wrap; gap:10px; margin-top:4px; }
+  .photo-picker-thumb{ position:relative; width:84px; }
+  .photo-picker-thumb img{ width:84px; height:84px; object-fit:cover; border-radius:6px; border:1px solid var(--gray-300); display:block; }
+  .ppt-pos{
+    position:absolute; top:5px; left:5px; background:rgba(17,17,17,0.78); color:#fff;
+    font-size:11px; font-weight:700; padding:1px 6px; border-radius:999px; font-family:var(--mono);
+  }
+  .ppt-controls{ display:flex; gap:3px; margin-top:4px; }
+  .ppt-controls button{
+    flex:1; background:var(--gray-050); border:1px solid var(--gray-300); border-radius:5px;
+    font-size:11px; padding:3px 0; cursor:pointer; color:var(--gray-700);
+  }
+  .ppt-controls button:hover{ border-color:var(--black); color:var(--black); }
+  .ppt-controls button:disabled{ opacity:0.3; cursor:not-allowed; }
+  .ppt-remove{ color:var(--red) !important; }
+  .photo-picker-add{
+    width:84px; height:84px; border:1.5px dashed var(--gray-300); border-radius:6px;
+    display:flex; align-items:center; justify-content:center; text-align:center;
+    font-size:12px; line-height:1.3; color:var(--gray-500); cursor:pointer; font-weight:600;
+  }
+  .photo-picker-add:hover{ border-color:var(--black); color:var(--black); }
+
+  .reorder-btns{ display:flex; flex-direction:column; gap:2px; }
+  .reorder-btns button{
+    background:none; border:1px solid var(--gray-300); border-radius:5px;
+    width:26px; height:22px; font-size:11px; color:var(--gray-700); cursor:pointer; line-height:1;
+  }
+  .reorder-btns button:hover{ border-color:var(--black); color:var(--black); }
+  .reorder-btns button:disabled{ opacity:0.3; cursor:not-allowed; }
+
+  .listing-row{
+    display:flex; align-items:center; gap:16px; flex-wrap:wrap;
+    background:#fff; border:1px solid var(--gray-100);
+    padding:14px 16px; margin-bottom:10px;
+  }
+  .listing-thumb{
+    width:56px; height:56px; background:var(--gray-050);
+    display:flex; align-items:center; justify-content:center;
+    font-size:26px; flex-shrink:0; overflow:hidden;
+  }
+  .listing-thumb img{ width:100%; height:100%; object-fit:cover; }
+  .listing-info{ flex:1; min-width:0; }
+  .listing-info h4{ font-size:16px; font-weight:700; }
+  .listing-info .meta{ font-family:var(--mono); font-size:12.5px; color:var(--gray-500); }
+  .badge{
+    font-family:var(--mono); font-size:11px; font-weight:600;
+    padding:4px 9px; border-radius:999px; white-space:nowrap;
+  }
+  .badge.available{ background:rgba(47,143,91,0.12); color:var(--green); }
+  .badge.pending{ background:var(--gray-100); color:var(--gray-500); }
+  .listing-price{ font-weight:800; font-size:16px; white-space:nowrap; }
+
+  .edit-panel{
+    width:100%; margin-top:16px; padding-top:16px;
+    border-top:1px solid var(--gray-100);
+  }
+  .edit-panel .grid-2{ display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-bottom:14px; }
+  .edit-panel .grid-3{ display:grid; grid-template-columns:1fr 1fr 1fr; gap:14px; margin-bottom:14px; }
+  .edit-panel .field label{ display:block; font-size:13px; font-weight:600; margin-bottom:5px; }
+  .edit-panel .field input, .edit-panel .field select{
+    width:100%; border:1.5px solid var(--gray-300); border-radius:8px; padding:9px 12px; font-size:15px;
+  }
+  .edit-panel .edit-actions{ display:flex; gap:10px; margin-top:6px; }
+  .edit-panel .edit-status{ font-size:13px; margin-top:8px; display:none; }
+  .edit-panel .edit-status.show{ display:block; }
+  .edit-panel .edit-status.ok{ color:var(--green); }
+  .edit-panel .edit-status.err{ color:var(--red); }
+
+  #empty-listings{ color:var(--gray-500); text-align:center; padding:40px 0; display:none; }
+  #empty-listings.show{ display:block; }
+  #loading{ color:var(--gray-500); padding:20px 0; }
+
+  /* ---- Deals of the Week panel ---- */
+  .deals-card{
+    background:#fff; border:1px solid var(--gray-100); padding:28px; margin-bottom:44px;
+  }
+  .deals-card p.hint{ color:var(--gray-500); font-size:14.5px; margin-bottom:20px; }
+  .deals-actions{ display:flex; gap:12px; margin-bottom:22px; flex-wrap:wrap; align-items:center; }
+  .deal-select{
+    border:1.5px solid var(--gray-300); border-radius:999px;
+    padding:12px 18px; min-height:44px; font-size:15px; color:var(--black);
+    background:#fff; max-width:260px;
+  }
+  .deal-select:focus{ outline:none; border-color:var(--black); }
+  .deal-row{
+    display:flex; align-items:center; gap:16px;
+    border:1px solid var(--gray-100); padding:14px 16px; margin-bottom:10px;
+  }
+  .deal-row.checked{ border-color:var(--accent); background:rgba(255,122,26,0.04); }
+  .deal-check{ width:20px; height:20px; flex-shrink:0; cursor:pointer; }
+  .deal-info{ flex:1; min-width:0; }
+  .deal-info h4{ font-size:15.5px; font-weight:700; }
+  .deal-info .meta{ font-family:var(--mono); font-size:12.5px; color:var(--gray-500); }
+  .deal-price-field{ display:flex; align-items:center; gap:8px; }
+  .deal-price-field label{ font-size:12.5px; color:var(--gray-500); white-space:nowrap; }
+  .deal-price-field input{
+    width:110px; border:1.5px solid var(--gray-300); border-radius:8px;
+    padding:8px 10px; font-size:15px;
+  }
+  .deal-price-field input:disabled{ background:var(--gray-050); color:var(--gray-300); }
+  #deals-status{ font-size:14px; margin-top:14px; display:none; }
+  #deals-status.show{ display:block; }
+  #deals-status.ok{ color:var(--green); }
+  #deals-status.err{ color:var(--red); }
+  #featured-status.show{ display:block; }
+  #featured-status.ok{ color:var(--green); }
+  #featured-status.err{ color:var(--red); }
+  #deals-empty{ color:var(--gray-500); font-size:14.5px; padding:12px 0; display:none; }
+  #deals-empty.show{ display:block; }
+
+  /* ---- Consignment leads panel ---- */
+  .lead-card{
+    background:#fff; border:1px solid var(--gray-100); padding:28px; margin-bottom:44px;
+  }
+  .lead-row{
+    border:1px solid var(--gray-100); padding:18px 20px; margin-bottom:12px;
+  }
+  .lead-row.new{ border-left:3px solid var(--accent); }
+  .lead-top{ display:flex; justify-content:space-between; align-items:flex-start; gap:16px; margin-bottom:10px; }
+  .lead-title{ font-size:16.5px; font-weight:700; }
+  .lead-sub{ font-family:var(--mono); font-size:12.5px; color:var(--gray-500); margin-top:3px; }
+  .lead-contact{ font-size:14.5px; color:var(--gray-700); margin-bottom:10px; line-height:1.7; }
+  .lead-contact a{ color:var(--black); text-decoration:underline; }
+  .lead-details{ font-size:14.5px; color:var(--gray-700); margin-bottom:14px; white-space:pre-wrap; }
+  .lead-actions{ display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+  .lead-status-select{
+    border:1.5px solid var(--gray-300); border-radius:999px; padding:8px 14px; font-size:13.5px; font-weight:600;
+  }
+  .lead-thumb{ width:64px; height:64px; background:var(--gray-050); flex-shrink:0; overflow:hidden; }
+  .lead-thumb img{ width:100%; height:100%; object-fit:cover; }
+  #leads-empty{ color:var(--gray-500); text-align:center; padding:30px 0; display:none; }
+  #leads-empty.show{ display:block; }
+  #leads-loading{ color:var(--gray-500); padding:16px 0; }
+
+  /* ---- Category photos panel ---- */
+  .catphoto-card{
+    background:#fff; border:1px solid var(--gray-100); padding:28px; margin-bottom:44px;
+  }
+  .catphoto-grid{ display:grid; grid-template-columns:repeat(3,1fr); gap:18px; }
+  .catphoto-row{
+    border:1px solid var(--gray-100); padding:16px; text-align:center;
+  }
+  .catphoto-preview{
+    width:100%; aspect-ratio:4/3; background:var(--gray-050);
+    display:flex; align-items:center; justify-content:center;
+    font-size:36px; margin-bottom:12px; overflow:hidden;
+  }
+  .catphoto-preview img{ width:100%; height:100%; object-fit:cover; }
+  .catphoto-row h4{ font-size:15px; font-weight:700; margin-bottom:10px; }
+  .catphoto-row input[type="file"]{ font-size:13px; margin-bottom:10px; width:100%; }
+  .catphoto-status{ font-size:12.5px; margin-top:8px; display:none; }
+  .catphoto-status.show{ display:block; }
+  .catphoto-status.ok{ color:var(--green); }
+  .catphoto-status.err{ color:var(--red); }
+  @media (max-width:960px){ .catphoto-grid{ grid-template-columns:1fr 1fr; } }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="container">
+    <a href="index.html" class="wordmark">Machine<span class="mrkt">Mrkt</span></a>
+    <span class="tag">OWNER ADMIN</span>
+  </div>
+</header>
+
+<!-- LOGIN -->
+<div id="login-screen">
+  <div class="login-card">
+    <h1>Owner Login</h1>
+    <p>Log in to add or remove listings. This page is not linked from the public site.</p>
+    <div class="field">
+      <label for="email">Email</label>
+      <input type="email" id="email" autocomplete="username">
+    </div>
+    <div class="field">
+      <label for="password">Password</label>
+      <input type="password" id="password" autocomplete="current-password">
+    </div>
+    <button class="pill pill-dark" id="login-btn" style="width:100%;">Log In</button>
+    <div id="login-error"></div>
+  </div>
+</div>
+
+<!-- DASHBOARD -->
+<div id="dashboard">
+  <div class="container">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:36px;">
+      <div>
+        <div class="section-title" style="margin-bottom:2px;">Manage Listings</div>
+        <div style="color:var(--gray-500); font-size:14px;" id="user-email"></div>
+      </div>
+      <button class="pill pill-outline" id="logout-btn">Log Out</button>
+    </div>
+
+    <div class="add-card">
+      <div class="section-title" style="font-size:18px;">Add Listings</div>
+      <p class="hint" style="margin-bottom:20px;">Add one truck or several at once — they'll be added in the order shown below, and you can reposition anything afterward using the ▲▼ arrows in Current Listings.</p>
+
+      <div id="add-rows"></div>
+
+      <div style="display:flex; gap:12px; margin-top:6px;">
+        <button class="pill pill-outline" id="add-row-btn" type="button">+ Add Another Truck</button>
+        <button class="pill pill-dark" id="add-btn" type="button">Add All Listings</button>
+      </div>
+      <div id="add-status"></div>
+    </div>
+
+    <div class="deals-card">
+      <div class="section-title" style="font-size:18px;">Deals of the Week</div>
+      <p class="hint">Pick which trucks show in the homepage "Deals of the Week" section and set a deal price for each. Nothing changes on the live site until you hit Publish.</p>
+      <div class="deals-actions">
+        <button class="pill pill-outline" id="auto-suggest-btn">Auto-Suggest 3 Deals</button>
+        <select id="deal-select" class="deal-select">
+          <option value="">Select a truck…</option>
+        </select>
+        <button class="pill pill-outline" id="add-selected-btn">Add to Deals</button>
+        <button class="pill pill-dark" id="publish-deals-btn">Publish Deals</button>
+      </div>
+      <div id="deals-selector-list"></div>
+      <div id="deals-empty">Add some listings below first — then they'll show up here to pick from.</div>
+      <div id="deals-status"></div>
+    </div>
+
+    <div class="deals-card">
+      <div class="section-title" style="font-size:18px;">Featured Listings</div>
+      <p class="hint">Pick which trucks show in the homepage "Ready to Go This Week" section. Nothing changes on the live site until you hit Publish.</p>
+      <div class="deals-actions">
+        <select id="featured-select" class="deal-select">
+          <option value="">Select a truck…</option>
+        </select>
+        <button class="pill pill-outline" id="add-featured-btn">Add to Featured</button>
+        <button class="pill pill-dark" id="publish-featured-btn">Publish Featured</button>
+      </div>
+      <div id="featured-selector-list"></div>
+      <div id="featured-empty" style="color:var(--gray-500); font-size:14.5px; padding:12px 0; display:none;">Add some listings below first — then they'll show up here to pick from.</div>
+      <div id="featured-status" style="font-size:14px; margin-top:14px; display:none;"></div>
+    </div>
+
+    <div class="catphoto-card">
+      <div class="section-title" style="font-size:18px;">Homepage Hero Photo</div>
+      <p class="hint">The big background photo on your homepage. Upload a new one to replace it.</p>
+      <div class="catphoto-grid" style="grid-template-columns:280px;">
+        <div class="catphoto-row">
+          <div class="catphoto-preview" id="heroPhoto-preview" style="aspect-ratio:16/9;">📷</div>
+          <input type="file" accept="image/*" id="heroPhoto-file">
+          <button class="pill pill-outline" style="padding:9px 18px; min-height:auto; font-size:14px; width:100%;" id="heroPhoto-btn">Update Photo</button>
+          <div class="catphoto-status" id="heroPhoto-status"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="catphoto-card">
+      <div class="section-title" style="font-size:18px;">Financing Page Photo</div>
+      <p class="hint">The truck photo on the right side of your Financing page hero. Upload a new one to replace it.</p>
+      <div class="catphoto-grid" style="grid-template-columns:280px;">
+        <div class="catphoto-row">
+          <div class="catphoto-preview" id="financingPhoto-preview" style="aspect-ratio:16/9;">📷</div>
+          <input type="file" accept="image/*" id="financingPhoto-file">
+          <button class="pill pill-outline" style="padding:9px 18px; min-height:auto; font-size:14px; width:100%;" id="financingPhoto-btn">Update Photo</button>
+          <div class="catphoto-status" id="financingPhoto-status"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="catphoto-card">
+      <div class="section-title" style="font-size:18px;">Category Photos</div>
+      <p class="hint">These are the 6 photos shown under "Shop by Equipment Type" on your homepage. Upload a new one to replace it — it updates on the site right away.</p>
+      <div class="catphoto-grid" id="catphoto-grid"></div>
+    </div>
+
+    <div class="lead-card">
+      <div class="section-title" style="font-size:18px;">Financing Applications</div>
+      <p class="hint">Applications submitted through the Financing page.</p>
+      <div id="financing-loading">Loading applications…</div>
+      <div id="financing-list"></div>
+      <div id="financing-empty" style="color:var(--gray-500); text-align:center; padding:30px 0; display:none;">No applications yet.</div>
+    </div>
+
+    <div class="lead-card">
+      <div class="section-title" style="font-size:18px;">Contact Messages</div>
+      <p class="hint">General inquiries submitted through the Contact page.</p>
+      <div id="contactmsgs-loading">Loading messages…</div>
+      <div id="contactmsgs-list"></div>
+      <div id="contactmsgs-empty" style="color:var(--gray-500); text-align:center; padding:30px 0; display:none;">No messages yet.</div>
+    </div>
+
+    <div class="lead-card">
+      <div class="section-title" style="font-size:18px;">Consignment Submissions</div>
+      <p class="hint">Trucks people have submitted to sell through you. Update status as you follow up, or turn an approved one into a real listing.</p>
+      <div id="leads-loading">Loading submissions…</div>
+      <div id="leads-list"></div>
+      <div id="leads-empty">No submissions yet.</div>
+    </div>
+
+    <div class="section-title">Current Listings</div>
+    <div id="loading">Loading listings…</div>
+    <div id="listings-list"></div>
+    <div id="empty-listings">No listings yet — add your first one above.</div>
+  </div>
+</div>
+
+<script src="supabase-config.js"></script>
+<script>
+  // Compresses/resizes an image file before upload so large phone photos
+  // don't eat storage or slow the site down. Returns a JPEG Blob.
+  // Spec sheet starting templates, one per category — owner fills in the blanks.
+  var SPEC_TEMPLATES = {
+    water:
+`CHASSIS & DRIVETRAIN
+Make: 
+Model: 
+Year: 
+Engine: 
+Horsepower: 
+Transmission: 
+Axle Config: 
+GVWR: 
+Mileage: 
+
+TANK & WATER SYSTEM
+Tank Capacity: 
+Tank Material: 
+Pump: 
+Spray System: 
+Hose Reel: 
+CA Compliant: 
+
+FEATURES & NOTES
+• `,
+    dump:
+`CHASSIS & DRIVETRAIN
+Make: 
+Model: 
+Year: 
+Engine: 
+Horsepower: 
+Transmission: 
+Axle Config: 
+GVWR: 
+Mileage: 
+
+DUMP BODY
+Body Length: 
+Body Material: 
+Hoist Type: 
+Tailgate Type: 
+Capacity: 
+
+FEATURES & NOTES
+• `,
+    tractor:
+`CHASSIS & DRIVETRAIN
+Make: 
+Model: 
+Year: 
+Engine: 
+Horsepower: 
+Transmission: 
+Axle Config: 
+GVWR: 
+Mileage: 
+
+CAB
+Cab Type: 
+Sleeper: 
+Wheelbase: 
+
+FEATURES & NOTES
+• `,
+    flatbed:
+`CHASSIS & DRIVETRAIN
+Make: 
+Model: 
+Year: 
+Engine: 
+Horsepower: 
+Transmission: 
+Axle Config: 
+GVWR: 
+Mileage: 
+
+BED & DECK
+Bed Length: 
+Bed Material: 
+Weight Capacity: 
+
+FEATURES & NOTES
+• `,
+    equipment:
+`MACHINE SPECS
+Make: 
+Model: 
+Year: 
+Engine: 
+Horsepower: 
+Operating Weight: 
+Hours: 
+
+FEATURES & NOTES
+• `
+  };
+
+  function insertTemplate(categorySelect, textarea){
+    var cat = categorySelect.value;
+    var template = SPEC_TEMPLATES[cat] || SPEC_TEMPLATES.water;
+    if(textarea.value.trim() !== ''){
+      if(!confirm('This will replace the current Full Specs text. Continue?')) return;
+    }
+    textarea.value = template;
+    textarea.focus();
+  }
+
+  function compressImage(file, maxWidth, quality){
+    maxWidth = maxWidth || 1600;
+    quality = quality || 0.8;
+    return new Promise(function(resolve, reject){
+      const img = new Image();
+      const url = URL.createObjectURL(file);
+      img.onload = function(){
+        let w = img.width, h = img.height;
+        if(w > maxWidth){ h = Math.round(h * maxWidth / w); w = maxWidth; }
+        const canvas = document.createElement('canvas');
+        canvas.width = w; canvas.height = h;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, w, h);
+        canvas.toBlob(function(blob){
+          URL.revokeObjectURL(url);
+          if(blob) resolve(blob); else reject(new Error('Could not process image'));
+        }, 'image/jpeg', quality);
+      };
+      img.onerror = function(){ URL.revokeObjectURL(url); reject(new Error('Could not read image')); };
+      img.src = url;
+    });
+  }
+
+  // ---- Reorderable multi-photo picker ----
+  // existingUrls: array of already-uploaded photo URLs (for editing) — pass [] for a new listing.
+  // Returns a DOM element with a .getEntries() method that gives the current ordered list.
+  function createPhotoPicker(existingUrls){
+    var entries = (existingUrls || []).filter(Boolean).map(function(url){ return { type:'existing', url:url }; });
+
+    var wrap = document.createElement('div');
+    wrap.className = 'photo-picker';
+    var strip = document.createElement('div');
+    strip.className = 'photo-picker-strip';
+    wrap.appendChild(strip);
+
+    var addLabel = document.createElement('label');
+    addLabel.className = 'photo-picker-add';
+    addLabel.innerHTML = '+ Add<br>Photos';
+    var fileInput = document.createElement('input');
+    fileInput.type = 'file'; fileInput.accept = 'image/*'; fileInput.multiple = true;
+    fileInput.style.display = 'none';
+    addLabel.appendChild(fileInput);
+
+    function render(){
+      strip.innerHTML = '';
+      entries.forEach(function(entry, i){
+        var thumb = document.createElement('div');
+        thumb.className = 'photo-picker-thumb';
+        var imgUrl = entry.type === 'existing' ? entry.url : entry.previewUrl;
+        thumb.innerHTML =
+          '<img src="' + imgUrl + '" alt="">' +
+          '<span class="ppt-pos">' + (i + 1) + '</span>' +
+          '<div class="ppt-controls">' +
+            '<button type="button" class="ppt-left" ' + (i === 0 ? 'disabled' : '') + '>◀</button>' +
+            '<button type="button" class="ppt-remove">✕</button>' +
+            '<button type="button" class="ppt-right" ' + (i === entries.length - 1 ? 'disabled' : '') + '>▶</button>' +
+          '</div>';
+        thumb.querySelector('.ppt-left').addEventListener('click', function(){
+          var tmp = entries[i - 1]; entries[i - 1] = entries[i]; entries[i] = tmp; render();
+        });
+        thumb.querySelector('.ppt-right').addEventListener('click', function(){
+          var tmp = entries[i + 1]; entries[i + 1] = entries[i]; entries[i] = tmp; render();
+        });
+        thumb.querySelector('.ppt-remove').addEventListener('click', function(){
+          entries.splice(i, 1); render();
+        });
+        strip.appendChild(thumb);
+      });
+      strip.appendChild(addLabel);
+    }
+
+    fileInput.addEventListener('change', function(){
+      Array.prototype.forEach.call(fileInput.files, function(file){
+        entries.push({ type:'new', file:file, previewUrl: URL.createObjectURL(file) });
+      });
+      fileInput.value = '';
+      render();
+    });
+
+    render();
+    wrap.getEntries = function(){ return entries; };
+    return wrap;
+  }
+
+  // Uploads any new photos in a picker's entries (compressed), keeps existing URLs as-is,
+  // and returns the final ordered array of URLs.
+  async function resolvePhotoEntries(entries, bucket, prefix){
+    const urls = [];
+    for(const entry of entries){
+      if(entry.type === 'existing'){
+        urls.push(entry.url);
+      } else {
+        const compressed = await compressImage(entry.file, 1600, 0.8);
+        const fileName = prefix + '-' + Date.now() + '-' + Math.random().toString(36).slice(2) + '.jpg';
+        const { error } = await supabaseClient.storage.from(bucket).upload(fileName, compressed, { contentType: 'image/jpeg' });
+        if(error) throw error;
+        const { data } = supabaseClient.storage.from(bucket).getPublicUrl(fileName);
+        urls.push(data.publicUrl);
+      }
+    }
+    return urls;
+  }
+
+  var loginScreen = document.getElementById('login-screen');
+  var dashboard = document.getElementById('dashboard');
+  var loginBtn = document.getElementById('login-btn');
+  var logoutBtn = document.getElementById('logout-btn');
+  var loginError = document.getElementById('login-error');
+  var userEmailEl = document.getElementById('user-email');
+
+  function showError(msg){
+    loginError.textContent = msg;
+    loginError.classList.add('show');
+  }
+
+  async function checkSession(){
+    const { data } = await supabaseClient.auth.getSession();
+    if(data.session){
+      loginScreen.style.display = 'none';
+      dashboard.style.display = 'block';
+      userEmailEl.textContent = data.session.user.email;
+      loadListings();
+      loadLeads();
+      loadCategoryPhotos();
+      loadHeroPhoto();
+      loadFinancingPhoto();
+      loadContactMessages();
+      loadFinancingApplications();
+    } else {
+      loginScreen.style.display = 'block';
+      dashboard.style.display = 'none';
+    }
+  }
+
+  loginBtn.addEventListener('click', handleLogin);
+  document.getElementById('email').addEventListener('keydown', function(e){ if(e.key === 'Enter') handleLogin(); });
+  document.getElementById('password').addEventListener('keydown', function(e){ if(e.key === 'Enter') handleLogin(); });
+
+  async function handleLogin(){
+    loginError.classList.remove('show');
+    const email = document.getElementById('email').value.trim();
+    const password = document.getElementById('password').value;
+    if(!email || !password){ showError('Enter your email and password.'); return; }
+    loginBtn.disabled = true; loginBtn.textContent = 'Logging in…';
+
+    var slowNotice = setTimeout(function(){
+      loginBtn.textContent = 'Still working… waking up the database';
+    }, 3500);
+
+    try {
+      const { error } = await supabaseClient.auth.signInWithPassword({ email, password });
+      clearTimeout(slowNotice);
+      loginBtn.disabled = false; loginBtn.textContent = 'Log In';
+      if(error){ showError(error.message); return; }
+      checkSession();
+    } catch(err){
+      clearTimeout(slowNotice);
+      loginBtn.disabled = false; loginBtn.textContent = 'Log In';
+      showError('Could not connect: ' + (err && err.message ? err.message : String(err)));
+    }
+  }
+
+  logoutBtn.addEventListener('click', async function(){
+    await supabaseClient.auth.signOut();
+    checkSession();
+  });
+
+  // ---- Add Listings (multiple at once) ----
+  var addRowsContainer = document.getElementById('add-rows');
+  var addRowBtn = document.getElementById('add-row-btn');
+  var addBtn = document.getElementById('add-btn');
+  var addStatus = document.getElementById('add-status');
+  var rowCounter = 0;
+
+  function showAddStatus(msg, ok){
+    addStatus.textContent = msg;
+    addStatus.className = 'show ' + (ok ? 'ok' : 'err');
+  }
+
+  function createAddRow(){
+    rowCounter++;
+    const row = document.createElement('div');
+    row.className = 'add-row';
+    row.innerHTML =
+      '<div class="row-number">TRUCK ' + rowCounter + '</div>' +
+      '<button type="button" class="remove-row-btn">Remove</button>' +
+      '<div class="grid-2" style="margin-bottom:16px;">' +
+        '<div class="field" style="margin-bottom:0;">' +
+          '<label>Title</label>' +
+          '<input type="text" class="f-title" placeholder="2016 Freightliner M2 Water Truck">' +
+        '</div>' +
+        '<div class="field" style="margin-bottom:0;">' +
+          '<label>Category</label>' +
+          '<select class="f-category">' +
+            '<option value="water">Water Truck</option>' +
+            '<option value="dump">Dump Truck</option>' +
+            '<option value="tractor">Tractor Truck</option>' +
+            '<option value="flatbed">Flatbed Truck</option>' +
+            '<option value="equipment">Heavy Equipment</option>' +
+          '</select>' +
+        '</div>' +
+      '</div>' +
+      '<div class="grid-3" style="margin-bottom:16px;">' +
+        '<div class="field" style="margin-bottom:0;">' +
+          '<label>Price (USD)</label>' +
+          '<input type="number" class="f-price" placeholder="59500">' +
+        '</div>' +
+        '<div class="field" style="margin-bottom:0;">' +
+          '<label>Spec line</label>' +
+          '<input type="text" class="f-meta" placeholder="178,000 mi · Cummins 6.7 ISB">' +
+        '</div>' +
+        '<div class="field" style="margin-bottom:0;">' +
+          '<label>Status</label>' +
+          '<select class="f-status">' +
+            '<option value="available">Available</option>' +
+            '<option value="pending">Pending</option>' +
+          '</select>' +
+        '</div>' +
+      '</div>' +
+      '<div class="field" style="margin-bottom:16px;">' +
+        '<label style="display:flex; align-items:center; justify-content:space-between;">Full Specs (optional) <button type="button" class="use-template-btn" style="background:none; border:1.5px solid var(--gray-300); border-radius:999px; padding:4px 12px; font-size:12.5px; font-weight:600; cursor:pointer; color:var(--gray-700);">Use Template for This Category</button></label>' +
+        '<textarea class="f-details" rows="4" placeholder="CHASSIS &amp; DRIVETRAIN\nMake: International\nModel: 8600\nYear: 2016\n\nFEATURES &amp; NOTES\n• Brand new tires\n• Finance available" style="width:100%; border:1.5px solid var(--gray-300); border-radius:8px; padding:9px 12px; font-size:14px; font-family:var(--mono); resize:vertical;"></textarea>' +
+      '</div>' +
+      '<div class="field" style="margin-bottom:0;">' +
+        '<label>Photos (optional — first one becomes the cover photo)</label>' +
+        '<div class="f-photo-picker-holder"></div>' +
+      '</div>' +
+      '<div class="row-status"></div>';
+
+    row.querySelector('.use-template-btn').addEventListener('click', function(){
+      insertTemplate(row.querySelector('.f-category'), row.querySelector('.f-details'));
+    });
+
+    row.querySelector('.f-photo-picker-holder').appendChild(createPhotoPicker([]));
+
+    row.querySelector('.remove-row-btn').addEventListener('click', function(){
+      if(addRowsContainer.children.length === 1){
+        showAddStatus('Keep at least one truck here, or just leave it blank.', false);
+        return;
+      }
+      row.remove();
+    });
+
+    return row;
+  }
+
+  function addNewRow(){
+    addRowsContainer.appendChild(createAddRow());
+  }
+
+  addRowBtn.addEventListener('click', addNewRow);
+  addNewRow(); // start with one row
+
+  addBtn.addEventListener('click', async function(){
+    const rows = Array.prototype.slice.call(addRowsContainer.querySelectorAll('.add-row'));
+    addStatus.classList.remove('show');
+
+    // Read + validate all rows first
+    const entries = [];
+    let hasError = false;
+    rows.forEach(function(row){
+      const title = row.querySelector('.f-title').value.trim();
+      const price = parseFloat(row.querySelector('.f-price').value);
+      const statusEl = row.querySelector('.row-status');
+      if(!title && isNaN(price)) { statusEl.textContent = ''; return; } // fully blank row, skip silently
+      if(!title || isNaN(price)){
+        statusEl.textContent = 'Needs a title and price.';
+        statusEl.className = 'row-status err';
+        hasError = true;
+        return;
+      }
+      statusEl.textContent = '';
+      statusEl.className = 'row-status';
+      entries.push({
+        row: row,
+        title: title,
+        category: row.querySelector('.f-category').value,
+        price: price,
+        meta: row.querySelector('.f-meta').value.trim(),
+        status: row.querySelector('.f-status').value,
+        details: row.querySelector('.f-details').value.trim(),
+        photoEntries: row.querySelector('.f-photo-picker-holder').firstChild.getEntries()
+      });
+    });
+
+    if(hasError){ showAddStatus('Fix the highlighted trucks above before adding.', false); return; }
+    if(entries.length === 0){ showAddStatus('Add at least one truck first.', false); return; }
+
+    addBtn.disabled = true; addBtn.textContent = 'Adding…';
+
+    // Find current max sort_order so new listings go to the end, in the order entered
+    let nextOrder = Date.now();
+    const { data: maxData } = await supabaseClient
+      .from('listings')
+      .select('sort_order')
+      .order('sort_order', { ascending: false })
+      .limit(1);
+    if(maxData && maxData.length > 0 && maxData[0].sort_order != null){
+      nextOrder = maxData[0].sort_order + 1;
+    }
+
+    let successCount = 0;
+    let failCount = 0;
+
+    for(const entry of entries){
+      const statusEl = entry.row.querySelector('.row-status');
+      try {
+        const photoUrls = await resolvePhotoEntries(entry.photoEntries, 'listing-photos', 'listing');
+        const photo_url = photoUrls.length > 0 ? photoUrls[0] : null;
+
+        const { error: insertError } = await supabaseClient
+          .from('listings')
+          .insert([{
+            title: entry.title, category: entry.category, price: entry.price,
+            meta: entry.meta, status: entry.status, details: entry.details, photo_url: photo_url, photos: photoUrls,
+            sort_order: nextOrder
+          }]);
+        if(insertError) throw insertError;
+
+        nextOrder++;
+        successCount++;
+        statusEl.textContent = 'Added ✓';
+        statusEl.className = 'row-status ok';
+      } catch(err){
+        failCount++;
+        statusEl.textContent = 'Error: ' + err.message;
+        statusEl.className = 'row-status err';
+      }
+    }
+
+    addBtn.disabled = false; addBtn.textContent = 'Add All Listings';
+
+    if(failCount === 0){
+      showAddStatus(successCount + ' listing' + (successCount > 1 ? 's' : '') + ' added.', true);
+      addRowsContainer.innerHTML = '';
+      rowCounter = 0;
+      addNewRow();
+    } else {
+      showAddStatus(successCount + ' added, ' + failCount + ' failed — see details above.', false);
+    }
+
+    loadListings();
+  });
+
+  var adminListings = [];
+
+  async function loadListings(){
+    var loading = document.getElementById('loading');
+    var list = document.getElementById('listings-list');
+    var empty = document.getElementById('empty-listings');
+    loading.style.display = 'block';
+    list.innerHTML = '';
+
+    const { data, error } = await supabaseClient
+      .from('listings')
+      .select('*')
+      .order('sort_order', { ascending: true });
+
+    loading.style.display = 'none';
+
+    if(error){ list.innerHTML = '<p style="color:#D64545;">Could not load listings: ' + error.message + '</p>'; return; }
+    adminListings = data || [];
+
+    if(adminListings.length === 0){ empty.classList.add('show'); }
+    else { empty.classList.remove('show'); }
+
+    adminListings.forEach(function(item, index){
+      const row = document.createElement('div');
+      row.className = 'listing-row';
+      row.setAttribute('data-id', item.id);
+      row.innerHTML =
+        '<div class="reorder-btns">' +
+          '<button type="button" class="move-up" ' + (index === 0 ? 'disabled' : '') + ' title="Move up">▲</button>' +
+          '<button type="button" class="move-down" ' + (index === adminListings.length - 1 ? 'disabled' : '') + ' title="Move down">▼</button>' +
+        '</div>' +
+        '<div class="listing-thumb">' + (item.photo_url ? '<img src="' + item.photo_url + '" alt="">' : '🚛') + '</div>' +
+        '<div class="listing-info">' +
+          '<h4>' + item.title + '</h4>' +
+          '<div class="meta">' + (item.meta || '') + '</div>' +
+        '</div>' +
+        '<span class="badge ' + item.status + '">' + item.status.toUpperCase() + '</span>' +
+        (item.is_deal ? '<span class="badge available" style="background:rgba(255,122,26,0.12); color:#D9600C;">DEAL</span>' : '') +
+        '<span class="listing-price">$' + Number(item.price).toLocaleString() + '</span>' +
+        '<button class="pill pill-outline edit-listing-btn" style="padding:9px 16px; min-height:auto; font-size:14px;">Edit</button>' +
+        '<button class="pill pill-danger" data-id="' + item.id + '" data-photo="' + (item.photo_url || '') + '">Remove</button>';
+      list.appendChild(row);
+
+      row.querySelector('.move-up').addEventListener('click', function(){ moveListing(index, -1); });
+      row.querySelector('.move-down').addEventListener('click', function(){ moveListing(index, 1); });
+      row.querySelector('.edit-listing-btn').addEventListener('click', function(){ openEditRow(row, item); });
+    });
+
+  function openEditRow(row, item){
+    // If already open, close it (toggle)
+    const existing = row.querySelector('.edit-panel');
+    if(existing){ existing.remove(); return; }
+
+    const panel = document.createElement('div');
+    panel.className = 'edit-panel';
+    panel.innerHTML =
+      '<div class="grid-2">' +
+        '<div class="field"><label>Title</label><input type="text" class="e-title" value="' + item.title.replace(/"/g,'&quot;') + '"></div>' +
+        '<div class="field"><label>Category</label><select class="e-category">' +
+          '<option value="water">Water Truck</option>' +
+          '<option value="dump">Dump Truck</option>' +
+          '<option value="tractor">Tractor Truck</option>' +
+          '<option value="flatbed">Flatbed Truck</option>' +
+          '<option value="equipment">Heavy Equipment</option>' +
+        '</select></div>' +
+      '</div>' +
+      '<div class="grid-3">' +
+        '<div class="field"><label>Price (USD)</label><input type="number" class="e-price" value="' + item.price + '"></div>' +
+        '<div class="field"><label>Spec line</label><input type="text" class="e-meta" value="' + (item.meta || '').replace(/"/g,'&quot;') + '"></div>' +
+        '<div class="field"><label>Status</label><select class="e-status">' +
+          '<option value="available">Available</option>' +
+          '<option value="pending">Pending</option>' +
+        '</select></div>' +
+      '</div>' +
+      '<div class="field"><label style="display:flex; align-items:center; justify-content:space-between;">Full Specs (optional) <button type="button" class="use-template-btn" style="background:none; border:1.5px solid var(--gray-300); border-radius:999px; padding:4px 12px; font-size:12.5px; font-weight:600; cursor:pointer; color:var(--gray-700);">Use Template for This Category</button></label><textarea class="e-details" rows="6" style="width:100%; border:1.5px solid var(--gray-300); border-radius:8px; padding:9px 12px; font-size:14px; font-family:var(--mono); resize:vertical;">' + (item.details || '').replace(/</g,'&lt;') + '</textarea></div>' +
+      '<div class="field"><label>Photos (drag order with the arrows — first is the cover photo)</label><div class="e-photo-picker-holder"></div></div>' +
+      '<div class="edit-actions">' +
+        '<button class="pill pill-dark e-save" style="padding:10px 20px; min-height:auto; font-size:14px;">Save Changes</button>' +
+        '<button class="pill pill-outline e-cancel" style="padding:10px 20px; min-height:auto; font-size:14px;">Cancel</button>' +
+      '</div>' +
+      '<div class="edit-status"></div>';
+    row.appendChild(panel);
+
+    const existingPhotos = (item.photos && item.photos.length > 0) ? item.photos : (item.photo_url ? [item.photo_url] : []);
+    panel.querySelector('.e-photo-picker-holder').appendChild(createPhotoPicker(existingPhotos));
+
+    panel.querySelector('.e-category').value = item.category;
+
+    panel.querySelector('.use-template-btn').addEventListener('click', function(){
+      insertTemplate(panel.querySelector('.e-category'), panel.querySelector('.e-details'));
+    });
+    panel.querySelector('.e-status').value = item.status;
+
+    panel.querySelector('.e-cancel').addEventListener('click', function(){ panel.remove(); });
+
+    panel.querySelector('.e-save').addEventListener('click', async function(){
+      const saveBtn = panel.querySelector('.e-save');
+      const statusEl = panel.querySelector('.edit-status');
+      const title = panel.querySelector('.e-title').value.trim();
+      const category = panel.querySelector('.e-category').value;
+      const price = parseFloat(panel.querySelector('.e-price').value);
+      const meta = panel.querySelector('.e-meta').value.trim();
+      const status = panel.querySelector('.e-status').value;
+      const details = panel.querySelector('.e-details').value.trim();
+      const photoEntries = panel.querySelector('.e-photo-picker-holder').firstChild.getEntries();
+
+      if(!title || isNaN(price)){
+        statusEl.textContent = 'Title and price are required.';
+        statusEl.className = 'edit-status show err';
+        return;
+      }
+
+      saveBtn.disabled = true; saveBtn.textContent = 'Saving…';
+
+      try {
+        const update = { title, category, price, meta, status, details };
+
+        const photoUrls = await resolvePhotoEntries(photoEntries, 'listing-photos', 'listing');
+        update.photos = photoUrls;
+        update.photo_url = photoUrls.length > 0 ? photoUrls[0] : null;
+
+        // Clean up storage for any existing photos that were removed from the picker
+        const keptUrls = new Set(photoEntries.filter(function(e){ return e.type === 'existing'; }).map(function(e){ return e.url; }));
+        const removedUrls = existingPhotos.filter(function(u){ return !keptUrls.has(u); });
+        for(const url of removedUrls){
+          const fileName = url.split('/').pop();
+          await supabaseClient.storage.from('listing-photos').remove([fileName]);
+        }
+
+        const { error } = await supabaseClient.from('listings').update(update).eq('id', item.id);
+        if(error) throw error;
+
+        loadListings();
+      } catch(err){
+        statusEl.textContent = 'Error: ' + err.message;
+        statusEl.className = 'edit-status show err';
+        saveBtn.disabled = false; saveBtn.textContent = 'Save Changes';
+      }
+    });
+  }
+
+  list.querySelectorAll('button.pill-danger').forEach(function(btn){
+      btn.addEventListener('click', async function(){
+        if(!confirm('Remove this listing? This cannot be undone.')) return;
+        const id = btn.getAttribute('data-id');
+        const photoUrl = btn.getAttribute('data-photo');
+        btn.disabled = true; btn.textContent = 'Removing…';
+
+        if(photoUrl){
+          const fileName = photoUrl.split('/').pop();
+          await supabaseClient.storage.from('listing-photos').remove([fileName]);
+        }
+        const { error } = await supabaseClient.from('listings').delete().eq('id', id);
+        if(error){ alert('Could not remove listing: ' + error.message); btn.disabled = false; btn.textContent = 'Remove'; return; }
+        loadListings();
+      });
+    });
+
+    renderDealsSelector();
+    renderFeaturedSelector();
+  }
+
+  async function moveListing(index, direction){
+    const other = index + direction;
+    if(other < 0 || other >= adminListings.length) return;
+
+    const a = adminListings[index];
+    const b = adminListings[other];
+    const aOrder = a.sort_order;
+    const bOrder = b.sort_order;
+
+    await Promise.all([
+      supabaseClient.from('listings').update({ sort_order: bOrder }).eq('id', a.id),
+      supabaseClient.from('listings').update({ sort_order: aOrder }).eq('id', b.id)
+    ]);
+    loadListings();
+  }
+
+  // ---- Consignment Leads ----
+  var leadsList = document.getElementById('leads-list');
+  var leadsLoading = document.getElementById('leads-loading');
+  var leadsEmpty = document.getElementById('leads-empty');
+
+  async function loadLeads(){
+    leadsLoading.style.display = 'block';
+    leadsList.innerHTML = '';
+
+    const { data, error } = await supabaseClient
+      .from('consignment_leads')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    leadsLoading.style.display = 'none';
+
+    if(error){ leadsList.innerHTML = '<p style="color:#D64545;">Could not load submissions: ' + error.message + '</p>'; return; }
+    if(!data || data.length === 0){ leadsEmpty.classList.add('show'); return; }
+    leadsEmpty.classList.remove('show');
+
+    data.forEach(function(lead){
+      const row = document.createElement('div');
+      row.className = 'lead-row' + (lead.status === 'new' ? ' new' : '');
+      row.innerHTML =
+        '<div class="lead-top">' +
+          '<div style="display:flex; gap:14px;">' +
+            '<div class="lead-thumb">' + (lead.photo_url ? '<img src="' + lead.photo_url + '" alt="">' : '') + '</div>' +
+            '<div>' +
+              '<div class="lead-title">' + lead.title + '</div>' +
+              '<div class="lead-sub">' + (CATEGORY_LABELS[lead.category] || lead.category) + (lead.asking_price ? ' · Asking $' + Number(lead.asking_price).toLocaleString() : '') + '</div>' +
+            '</div>' +
+          '</div>' +
+          '<select class="lead-status-select">' +
+            '<option value="new"' + (lead.status === 'new' ? ' selected' : '') + '>New</option>' +
+            '<option value="contacted"' + (lead.status === 'contacted' ? ' selected' : '') + '>Contacted</option>' +
+            '<option value="approved"' + (lead.status === 'approved' ? ' selected' : '') + '>Approved</option>' +
+            '<option value="declined"' + (lead.status === 'declined' ? ' selected' : '') + '>Declined</option>' +
+          '</select>' +
+        '</div>' +
+        '<div class="lead-contact">' +
+          lead.name + ' · <a href="tel:' + lead.phone.replace(/[^0-9+]/g,'') + '">' + lead.phone + '</a>' +
+          (lead.email ? ' · <a href="mailto:' + lead.email + '">' + lead.email + '</a>' : '') +
+        '</div>' +
+        (lead.details ? '<div class="lead-details">' + lead.details + '</div>' : '') +
+        '<div class="lead-actions">' +
+          '<button class="pill pill-outline use-lead-btn" style="padding:9px 18px; min-height:auto; font-size:14px;">Use for New Listing</button>' +
+          '<button class="pill pill-danger delete-lead-btn" style="padding:9px 18px; min-height:auto; font-size:14px;">Remove</button>' +
+        '</div>';
+      leadsList.appendChild(row);
+
+      row.querySelector('.lead-status-select').addEventListener('change', async function(e){
+        await supabaseClient.from('consignment_leads').update({ status: e.target.value }).eq('id', lead.id);
+        row.classList.toggle('new', e.target.value === 'new');
+      });
+
+      row.querySelector('.use-lead-btn').addEventListener('click', function(){
+        const row2 = createAddRow();
+        addRowsContainer.appendChild(row2);
+        row2.querySelector('.f-title').value = lead.title;
+        row2.querySelector('.f-category').value = lead.category;
+        if(lead.asking_price) row2.querySelector('.f-price').value = lead.asking_price;
+        if(lead.details) row2.querySelector('.f-meta').value = lead.details.slice(0, 60);
+        row2.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        row2.style.transition = 'background 0.3s ease';
+        row2.style.background = 'rgba(255,122,26,0.12)';
+        setTimeout(function(){ row2.style.background = ''; }, 900);
+      });
+
+      row.querySelector('.delete-lead-btn').addEventListener('click', async function(){
+        if(!confirm('Remove this submission? This cannot be undone.')) return;
+        if(lead.photo_url){
+          const fileName = lead.photo_url.split('/').pop();
+          await supabaseClient.storage.from('consignment-photos').remove([fileName]);
+        }
+        await supabaseClient.from('consignment_leads').delete().eq('id', lead.id);
+        loadLeads();
+      });
+    });
+  }
+
+  // ---- Deals of the Week ----
+  var CATEGORY_LABELS = { water:'Water Truck', dump:'Dump Truck', tractor:'Tractor Truck', flatbed:'Flatbed Truck', equipment:'Heavy Equipment' };
+  var dealsList = document.getElementById('deals-selector-list');
+  var dealsEmpty = document.getElementById('deals-empty');
+  var dealsStatus = document.getElementById('deals-status');
+  var autoSuggestBtn = document.getElementById('auto-suggest-btn');
+  var publishDealsBtn = document.getElementById('publish-deals-btn');
+
+  function renderDealsSelector(){
+    dealsList.innerHTML = '';
+    if(adminListings.length === 0){ dealsEmpty.classList.add('show'); populateDealSelect(); return; }
+    dealsEmpty.classList.remove('show');
+
+    adminListings.forEach(function(item){
+      const row = document.createElement('div');
+      row.className = 'deal-row' + (item.is_deal ? ' checked' : '');
+      row.setAttribute('data-id', item.id);
+      const suggestedDefault = Math.round((item.price * 0.9) / 10) * 10;
+      const startingPrice = item.deal_price != null ? item.deal_price : suggestedDefault;
+
+      row.innerHTML =
+        '<input type="checkbox" class="deal-check" ' + (item.is_deal ? 'checked' : '') + '>' +
+        '<div class="deal-info">' +
+          '<h4>' + item.title + '</h4>' +
+          '<div class="meta">' + (CATEGORY_LABELS[item.category] || item.category) + ' · Regular $' + Number(item.price).toLocaleString() + '</div>' +
+        '</div>' +
+        '<div class="deal-price-field">' +
+          '<label>Deal Price</label>' +
+          '<input type="number" class="deal-price-input" value="' + startingPrice + '" ' + (item.is_deal ? '' : 'disabled') + '>' +
+        '</div>';
+      dealsList.appendChild(row);
+
+      const checkbox = row.querySelector('.deal-check');
+      const priceInput = row.querySelector('.deal-price-input');
+      checkbox.addEventListener('change', function(){
+        priceInput.disabled = !checkbox.checked;
+        row.classList.toggle('checked', checkbox.checked);
+      });
+    });
+
+    populateDealSelect();
+  }
+
+  function populateDealSelect(){
+    var select = document.getElementById('deal-select');
+    var currentVal = select.value;
+    select.innerHTML = '<option value="">Select a truck…</option>';
+    adminListings.forEach(function(item){
+      var opt = document.createElement('option');
+      opt.value = item.id;
+      opt.textContent = item.title + (item.is_deal ? ' (already a deal)' : '');
+      select.appendChild(opt);
+    });
+    select.value = currentVal;
+  }
+
+  document.getElementById('add-selected-btn').addEventListener('click', function(){
+    var select = document.getElementById('deal-select');
+    var id = select.value;
+    if(!id){
+      dealsStatus.textContent = 'Pick a truck from the dropdown first.';
+      dealsStatus.className = 'show err';
+      return;
+    }
+    var row = dealsList.querySelector('.deal-row[data-id="' + id + '"]');
+    if(!row) return;
+    var checkbox = row.querySelector('.deal-check');
+    if(!checkbox.checked){
+      checkbox.checked = true;
+      checkbox.dispatchEvent(new Event('change'));
+    }
+    row.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    row.style.transition = 'background 0.3s ease';
+    row.style.background = 'rgba(255,122,26,0.12)';
+    setTimeout(function(){ row.style.background = ''; }, 900);
+    select.value = '';
+    dealsStatus.textContent = 'Added — adjust the price if needed, then hit Publish.';
+    dealsStatus.className = 'show ok';
+  });
+
+  autoSuggestBtn.addEventListener('click', function(){
+    const rows = Array.prototype.slice.call(dealsList.querySelectorAll('.deal-row'));
+    const uncheckedRows = rows.filter(function(r){ return !r.querySelector('.deal-check').checked; });
+    const shuffled = uncheckedRows.sort(function(){ return Math.random() - 0.5; });
+    const picks = shuffled.slice(0, Math.min(3, shuffled.length));
+
+    if(picks.length === 0){
+      dealsStatus.textContent = 'Every listing is already selected — uncheck some first to get new suggestions.';
+      dealsStatus.className = 'show err';
+      return;
+    }
+    picks.forEach(function(row){
+      const checkbox = row.querySelector('.deal-check');
+      checkbox.checked = true;
+      checkbox.dispatchEvent(new Event('change'));
+    });
+    dealsStatus.textContent = 'Suggested ' + picks.length + ' deal' + (picks.length > 1 ? 's' : '') + ' — adjust prices below, then hit Publish.';
+    dealsStatus.className = 'show ok';
+  });
+
+  publishDealsBtn.addEventListener('click', async function(){
+    publishDealsBtn.disabled = true; publishDealsBtn.textContent = 'Publishing…';
+    const rows = Array.prototype.slice.call(dealsList.querySelectorAll('.deal-row'));
+
+    try {
+      await Promise.all(rows.map(function(row){
+        const id = row.getAttribute('data-id');
+        const isChecked = row.querySelector('.deal-check').checked;
+        const priceVal = parseFloat(row.querySelector('.deal-price-input').value);
+        const update = isChecked
+          ? { is_deal: true, deal_price: isNaN(priceVal) ? null : priceVal }
+          : { is_deal: false, deal_price: null };
+        return supabaseClient.from('listings').update(update).eq('id', id);
+      }));
+      dealsStatus.textContent = 'Deals published — live on the homepage now.';
+      dealsStatus.className = 'show ok';
+      loadListings();
+    } catch(err){
+      dealsStatus.textContent = 'Error publishing deals: ' + err.message;
+      dealsStatus.className = 'show err';
+    }
+    publishDealsBtn.disabled = false; publishDealsBtn.textContent = 'Publish Deals';
+  });
+
+  // ---- Featured Listings ----
+  var featuredList = document.getElementById('featured-selector-list');
+  var featuredEmpty = document.getElementById('featured-empty');
+  var featuredStatus = document.getElementById('featured-status');
+  var publishFeaturedBtn = document.getElementById('publish-featured-btn');
+
+  function renderFeaturedSelector(){
+    featuredList.innerHTML = '';
+    if(adminListings.length === 0){ featuredEmpty.style.display = 'block'; populateFeaturedSelect(); return; }
+    featuredEmpty.style.display = 'none';
+
+    adminListings.forEach(function(item){
+      const row = document.createElement('div');
+      row.className = 'deal-row' + (item.is_featured ? ' checked' : '');
+      row.setAttribute('data-id', item.id);
+
+      row.innerHTML =
+        '<input type="checkbox" class="featured-check" ' + (item.is_featured ? 'checked' : '') + '>' +
+        '<div class="deal-info">' +
+          '<h4>' + item.title + '</h4>' +
+          '<div class="meta">' + (CATEGORY_LABELS[item.category] || item.category) + ' · $' + Number(item.price).toLocaleString() + '</div>' +
+        '</div>';
+      featuredList.appendChild(row);
+
+      row.querySelector('.featured-check').addEventListener('change', function(){
+        row.classList.toggle('checked', this.checked);
+      });
+    });
+
+    populateFeaturedSelect();
+  }
+
+  function populateFeaturedSelect(){
+    var select = document.getElementById('featured-select');
+    var currentVal = select.value;
+    select.innerHTML = '<option value="">Select a truck…</option>';
+    adminListings.forEach(function(item){
+      var opt = document.createElement('option');
+      opt.value = item.id;
+      opt.textContent = item.title + (item.is_featured ? ' (already featured)' : '');
+      select.appendChild(opt);
+    });
+    select.value = currentVal;
+  }
+
+  document.getElementById('add-featured-btn').addEventListener('click', function(){
+    var select = document.getElementById('featured-select');
+    var id = select.value;
+    if(!id){
+      featuredStatus.textContent = 'Pick a truck from the dropdown first.';
+      featuredStatus.className = 'show err';
+      return;
+    }
+    var row = featuredList.querySelector('.deal-row[data-id="' + id + '"]');
+    if(!row) return;
+    var checkbox = row.querySelector('.featured-check');
+    if(!checkbox.checked){
+      checkbox.checked = true;
+      checkbox.dispatchEvent(new Event('change'));
+    }
+    row.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    row.style.transition = 'background 0.3s ease';
+    row.style.background = 'rgba(255,122,26,0.12)';
+    setTimeout(function(){ row.style.background = ''; }, 900);
+    select.value = '';
+    featuredStatus.textContent = 'Added — hit Publish Featured to make it live.';
+    featuredStatus.className = 'show ok';
+  });
+
+  publishFeaturedBtn.addEventListener('click', async function(){
+    publishFeaturedBtn.disabled = true; publishFeaturedBtn.textContent = 'Publishing…';
+    const rows = Array.prototype.slice.call(featuredList.querySelectorAll('.deal-row'));
+
+    try {
+      await Promise.all(rows.map(function(row){
+        const id = row.getAttribute('data-id');
+        const isChecked = row.querySelector('.featured-check').checked;
+        return supabaseClient.from('listings').update({ is_featured: isChecked }).eq('id', id);
+      }));
+      featuredStatus.textContent = 'Featured listings published — live on the homepage now.';
+      featuredStatus.className = 'show ok';
+      loadListings();
+    } catch(err){
+      featuredStatus.textContent = 'Error publishing featured listings: ' + err.message;
+      featuredStatus.className = 'show err';
+    }
+    publishFeaturedBtn.disabled = false; publishFeaturedBtn.textContent = 'Publish Featured';
+  });
+
+  // ---- Category Photos ----
+  var CATEGORY_TILE_LABELS = [
+    { key: 'water', label: 'Water Trucks' },
+    { key: 'dump', label: 'Dump Trucks' },
+    { key: 'tractor', label: 'Tractor Trucks' },
+    { key: 'flatbed', label: 'Flatbed Trucks' },
+    { key: 'loader', label: 'Loaders' },
+    { key: 'excavator', label: 'Excavators' }
+  ];
+  var catphotoGrid = document.getElementById('catphoto-grid');
+
+  function buildCategoryPhotoRows(){
+    catphotoGrid.innerHTML = '';
+    CATEGORY_TILE_LABELS.forEach(function(cat){
+      const row = document.createElement('div');
+      row.className = 'catphoto-row';
+      row.innerHTML =
+        '<div class="catphoto-preview" id="catphoto-preview-' + cat.key + '">📷</div>' +
+        '<h4>' + cat.label + '</h4>' +
+        '<input type="file" accept="image/*" id="catphoto-file-' + cat.key + '">' +
+        '<button class="pill pill-outline" style="padding:9px 18px; min-height:auto; font-size:14px; width:100%;" data-cat="' + cat.key + '">Update Photo</button>' +
+        '<div class="catphoto-status" id="catphoto-status-' + cat.key + '"></div>';
+      catphotoGrid.appendChild(row);
+
+      row.querySelector('button').addEventListener('click', function(){
+        uploadCategoryPhoto(cat.key);
+      });
+    });
+  }
+  buildCategoryPhotoRows();
+
+  async function loadCategoryPhotos(){
+    const { data, error } = await supabaseClient.from('category_photos').select('*');
+    if(error || !data) return;
+    data.forEach(function(row){
+      if(!row.photo_url) return;
+      const preview = document.getElementById('catphoto-preview-' + row.category);
+      if(preview) preview.innerHTML = '<img src="' + row.photo_url + '" alt="">';
+    });
+  }
+
+  async function uploadCategoryPhoto(catKey){
+    const fileInput = document.getElementById('catphoto-file-' + catKey);
+    const statusEl = document.getElementById('catphoto-status-' + catKey);
+    const file = fileInput.files[0];
+    if(!file){
+      statusEl.textContent = 'Choose a photo first.';
+      statusEl.className = 'catphoto-status show err';
+      return;
+    }
+    statusEl.textContent = 'Uploading…';
+    statusEl.className = 'catphoto-status show';
+
+    try {
+      const compressed = await compressImage(file, 1400, 0.8);
+      const fileName = catKey + '-' + Date.now() + '-tile.jpg';
+      const { error: uploadError } = await supabaseClient.storage
+        .from('category-photos')
+        .upload(fileName, compressed, { contentType: 'image/jpeg' });
+      if(uploadError) throw uploadError;
+
+      const { data: urlData } = supabaseClient.storage
+        .from('category-photos')
+        .getPublicUrl(fileName);
+
+      const { error: upsertError } = await supabaseClient
+        .from('category_photos')
+        .upsert([{ category: catKey, photo_url: urlData.publicUrl, updated_at: new Date().toISOString() }]);
+      if(upsertError) throw upsertError;
+
+      document.getElementById('catphoto-preview-' + catKey).innerHTML = '<img src="' + urlData.publicUrl + '" alt="">';
+      statusEl.textContent = 'Updated ✓ — live on the homepage now.';
+      statusEl.className = 'catphoto-status show ok';
+      fileInput.value = '';
+    } catch(err){
+      statusEl.textContent = 'Error: ' + err.message;
+      statusEl.className = 'catphoto-status show err';
+    }
+  }
+
+  checkSession();
+
+  // ---- Homepage Hero Photo ----
+  async function loadHeroPhoto(){
+    const { data } = await supabaseClient
+      .from('site_settings')
+      .select('value')
+      .eq('key', 'hero_photo')
+      .maybeSingle();
+    if(data && data.value){
+      document.getElementById('heroPhoto-preview').innerHTML = '<img src="' + data.value + '" alt="">';
+    }
+  }
+
+  document.getElementById('heroPhoto-btn').addEventListener('click', async function(){
+    const fileInput = document.getElementById('heroPhoto-file');
+    const statusEl = document.getElementById('heroPhoto-status');
+    const file = fileInput.files[0];
+    if(!file){
+      statusEl.textContent = 'Choose a photo first.';
+      statusEl.className = 'catphoto-status show err';
+      return;
+    }
+    statusEl.textContent = 'Uploading…';
+    statusEl.className = 'catphoto-status show';
+
+    try {
+      const compressed = await compressImage(file, 1920, 0.75);
+      const fileName = 'hero-' + Date.now() + '.jpg';
+      const { error: uploadError } = await supabaseClient.storage
+        .from('site-photos')
+        .upload(fileName, compressed, { contentType: 'image/jpeg' });
+      if(uploadError) throw uploadError;
+
+      const { data: urlData } = supabaseClient.storage
+        .from('site-photos')
+        .getPublicUrl(fileName);
+
+      const { error: upsertError } = await supabaseClient
+        .from('site_settings')
+        .upsert([{ key: 'hero_photo', value: urlData.publicUrl, updated_at: new Date().toISOString() }]);
+      if(upsertError) throw upsertError;
+
+      document.getElementById('heroPhoto-preview').innerHTML = '<img src="' + urlData.publicUrl + '" alt="">';
+      statusEl.textContent = 'Updated ✓ — live on the homepage now.';
+      statusEl.className = 'catphoto-status show ok';
+      fileInput.value = '';
+    } catch(err){
+      statusEl.textContent = 'Error: ' + err.message;
+      statusEl.className = 'catphoto-status show err';
+    }
+  });
+
+  // ---- Financing Page Photo ----
+  async function loadFinancingPhoto(){
+    const { data } = await supabaseClient
+      .from('site_settings')
+      .select('value')
+      .eq('key', 'financing_photo')
+      .maybeSingle();
+    if(data && data.value){
+      document.getElementById('financingPhoto-preview').innerHTML = '<img src="' + data.value + '" alt="">';
+    }
+  }
+
+  document.getElementById('financingPhoto-btn').addEventListener('click', async function(){
+    const fileInput = document.getElementById('financingPhoto-file');
+    const statusEl = document.getElementById('financingPhoto-status');
+    const file = fileInput.files[0];
+    if(!file){
+      statusEl.textContent = 'Choose a photo first.';
+      statusEl.className = 'catphoto-status show err';
+      return;
+    }
+    statusEl.textContent = 'Uploading…';
+    statusEl.className = 'catphoto-status show';
+
+    try {
+      const compressed = await compressImage(file, 1400, 0.78);
+      const fileName = 'financing-' + Date.now() + '.jpg';
+      const { error: uploadError } = await supabaseClient.storage
+        .from('site-photos')
+        .upload(fileName, compressed, { contentType: 'image/jpeg' });
+      if(uploadError) throw uploadError;
+
+      const { data: urlData } = supabaseClient.storage
+        .from('site-photos')
+        .getPublicUrl(fileName);
+
+      const { error: upsertError } = await supabaseClient
+        .from('site_settings')
+        .upsert([{ key: 'financing_photo', value: urlData.publicUrl, updated_at: new Date().toISOString() }]);
+      if(upsertError) throw upsertError;
+
+      document.getElementById('financingPhoto-preview').innerHTML = '<img src="' + urlData.publicUrl + '" alt="">';
+      statusEl.textContent = 'Updated ✓ — live on the Financing page now.';
+      statusEl.className = 'catphoto-status show ok';
+      fileInput.value = '';
+    } catch(err){
+      statusEl.textContent = 'Error: ' + err.message;
+      statusEl.className = 'catphoto-status show err';
+    }
+  });
+
+  // ---- Contact Messages ----
+  async function loadContactMessages(){
+    var loading = document.getElementById('contactmsgs-loading');
+    var list = document.getElementById('contactmsgs-list');
+    var empty = document.getElementById('contactmsgs-empty');
+    loading.style.display = 'block';
+    list.innerHTML = '';
+
+    const { data, error } = await supabaseClient
+      .from('contact_messages')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    loading.style.display = 'none';
+
+    if(error){ list.innerHTML = '<p style="color:#D64545;">Could not load messages: ' + error.message + '</p>'; return; }
+    if(!data || data.length === 0){ empty.style.display = 'block'; return; }
+    empty.style.display = 'none';
+
+    data.forEach(function(msg){
+      const row = document.createElement('div');
+      row.className = 'lead-row';
+      const when = new Date(msg.created_at).toLocaleDateString('en-US', { month:'short', day:'numeric', year:'numeric' });
+      row.innerHTML =
+        '<div class="lead-top">' +
+          '<div><div class="lead-title">' + msg.name + '</div><div class="lead-sub">' + when + '</div></div>' +
+          '<button class="pill pill-danger delete-msg-btn" style="padding:9px 18px; min-height:auto; font-size:14px;">Remove</button>' +
+        '</div>' +
+        '<div class="lead-contact">' +
+          (msg.phone ? '<a href="tel:' + msg.phone.replace(/[^0-9+]/g,'') + '">' + msg.phone + '</a>' : '') +
+          (msg.phone && msg.email ? ' · ' : '') +
+          (msg.email ? '<a href="mailto:' + msg.email + '">' + msg.email + '</a>' : '') +
+        '</div>' +
+        (msg.message ? '<div class="lead-details">' + msg.message + '</div>' : '');
+      list.appendChild(row);
+
+      row.querySelector('.delete-msg-btn').addEventListener('click', async function(){
+        if(!confirm('Remove this message? This cannot be undone.')) return;
+        await supabaseClient.from('contact_messages').delete().eq('id', msg.id);
+        loadContactMessages();
+      });
+    });
+  }
+
+  // ---- Financing Applications ----
+  async function loadFinancingApplications(){
+    var loading = document.getElementById('financing-loading');
+    var list = document.getElementById('financing-list');
+    var empty = document.getElementById('financing-empty');
+    loading.style.display = 'block';
+    list.innerHTML = '';
+
+    const { data, error } = await supabaseClient
+      .from('financing_applications')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    loading.style.display = 'none';
+
+    if(error){ list.innerHTML = '<p style="color:#D64545;">Could not load applications: ' + error.message + '</p>'; return; }
+    if(!data || data.length === 0){ empty.style.display = 'block'; return; }
+    empty.style.display = 'none';
+
+    data.forEach(function(app){
+      const row = document.createElement('div');
+      row.className = 'lead-row' + (app.status === 'new' ? ' new' : '');
+      row.innerHTML =
+        '<div class="lead-top">' +
+          '<div>' +
+            '<div class="lead-title">' + app.name + '</div>' +
+            '<div class="lead-sub">' + (app.equipment_interest || 'No specific equipment noted') + (app.down_payment ? ' · Down payment $' + Number(app.down_payment).toLocaleString() : '') + '</div>' +
+          '</div>' +
+          '<select class="lead-status-select">' +
+            '<option value="new"' + (app.status === 'new' ? ' selected' : '') + '>New</option>' +
+            '<option value="contacted"' + (app.status === 'contacted' ? ' selected' : '') + '>Contacted</option>' +
+            '<option value="approved"' + (app.status === 'approved' ? ' selected' : '') + '>Approved</option>' +
+            '<option value="declined"' + (app.status === 'declined' ? ' selected' : '') + '>Declined</option>' +
+          '</select>' +
+        '</div>' +
+        '<div class="lead-contact">' +
+          '<a href="tel:' + app.phone.replace(/[^0-9+]/g,'') + '">' + app.phone + '</a>' +
+          (app.email ? ' · <a href="mailto:' + app.email + '">' + app.email + '</a>' : '') +
+        '</div>' +
+        (app.message ? '<div class="lead-details">' + app.message + '</div>' : '') +
+        '<div class="lead-actions">' +
+          '<button class="pill pill-danger delete-financing-btn" style="padding:9px 18px; min-height:auto; font-size:14px;">Remove</button>' +
+        '</div>';
+      list.appendChild(row);
+
+      row.querySelector('.lead-status-select').addEventListener('change', async function(e){
+        await supabaseClient.from('financing_applications').update({ status: e.target.value }).eq('id', app.id);
+        row.classList.toggle('new', e.target.value === 'new');
+      });
+
+      row.querySelector('.delete-financing-btn').addEventListener('click', async function(){
+        if(!confirm('Remove this application? This cannot be undone.')) return;
+        await supabaseClient.from('financing_applications').delete().eq('id', app.id);
+        loadFinancingApplications();
+      });
+    });
+  }
+</script>
+
+</body>
+</html>
